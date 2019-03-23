@@ -29,12 +29,13 @@ GLuint indexBuffer;
 GLenum positionBufferId;
 
 const GLfloat vertexPositionData[] = {
-   -1.0f, -1.0f,
-    1.0f, -1.0f,
-   -1.0f,  1.0f,
-    1.0f,  1.0f
+   -1.0f, -1.0f, 0.0f,
+    1.0f, -1.0f, 0.0f,
+   -1.0f,  1.0f, 0.0f,
+    1.0f,  1.0f, 0.0f,
 };
-const GLushort indexData[] = { 0, 1, 2, 3 };
+const GLushort indexData[] = { 0, 1, 2,  
+                               1, 2, 3};
 
 void createGameCubw(){
 
@@ -57,7 +58,7 @@ void update(void) {
 
 }
 
-void render() {
+void drawsquare(glm::) {
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
    // activate our shader program
@@ -86,12 +87,12 @@ void render() {
    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
 
    // configure the attribute array (the layout of the vertex buffer)
-   glVertexAttribPointer(positionBufferId, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 2, (void *)0);
+   glVertexAttribPointer(positionBufferId, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 3, (void *)0);
    glEnableVertexAttribArray(positionBufferId);
 
-   // draw the triangle strip
+   // draw the triangles
    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-   glDrawElements(GL_TRIANGLES, 4, GL_UNSIGNED_SHORT, (void*)0);
+   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*)0);
 
    // disable the attribute array
    glDisableVertexAttribArray(positionBufferId);
