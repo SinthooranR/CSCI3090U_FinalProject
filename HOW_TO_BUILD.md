@@ -6,35 +6,25 @@ Note:  There is also a Visual Studio 2017 Solution available.
 
 - ensure that you have GLEW and GLUT installed
 
-```sh
 $ sudo apt install libglew-dev libglut-dev
-```
 
 - build the project:
 
-```sh
 $ make -f Makefile.Unix
-```
 
 - run the application:
 
-```sh
-$ ./main
-```
+$ ./baseopengl
 
 ### Using Visual Studio Command Prompt
 
 - GLEW and GLUT are included in the 'include' and 'lib' subfolders
 
-```batch
 > nmake /F Nmakefile.Windows
-```
 
 - run the application:
 
-```batch
-> main
-```
+> baseopengl
 
 ## MacOS
 
@@ -44,21 +34,15 @@ Disclaimer:  The recommended platform is Windows.  Using any other platform may 
 
 e.g. using Homebrew:
 
-```sh
 $ brew install glew
-```
 
 - build the project:
 
-```sh
 $ make -f Makefile.MacOS
-```
 
 - run the application:
 
-```sh
-$ ./main
-```
+$ ./baseopengl
 
 ## Linux or other UNIX-based operating system
 
@@ -69,18 +53,12 @@ Disclaimer:  The recommended platform is Windows.  Using any other platform may 
 - ensure that you have GLEW and GLUT installed
 
 e.g. on Ubuntu:
-```sh
 $ sudo apt install libglew-dev libglut-dev
-```
 
 - build the project:
 
-```sh
 $ make -f Makefile.Unix
-```
 
 - run the application:
 
-```sh
-$ ./main
-```
+$ ./baseopengl

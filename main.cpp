@@ -1,214 +1,404 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <stack>
 #include <cmath>
 #include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#ifdef __APPLE__
+#  include <GLUT/glut.h>
+#else
+#  include <GL/glut.h>
+#endif
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
-#include <glm/gtc/quaternion.hpp>
 
-#include "shader.hpp"
-#include "trackball.hpp"
-#include "error.hpp"
+int windowId = 0;
 
-// window-related variables
-int width = 1024;
-int height = 768;
+// projection matrix - perspective projection
+glm::mat4 projectionMatrix;
 
-// projection matrix
-glm::mat4 projection;
+// view matrix - orient everything around our preferred view
+glm::mat4 viewMatrix;
 
-// geometry-related variables
 GLuint programId;
 GLuint vertexBuffer;
 GLuint indexBuffer;
 GLenum positionBufferId;
 
-const GLfloat vertexPositionData[] = {
-   -1.0f, -1.0f, 0.0f,
-    1.0f, -1.0f, 0.0f,
-   -1.0f,  1.0f, 0.0f,
-    1.0f,  1.0f, 0.0f,
+float xRotation = 0.0f;
+float yRotation = 0.0f;
+float zRotation = 0.0f;
+
+float yRotationSpeed = 0.1f;
+
+float minArmRotation = 45.0f;
+float maxArmRotation = 160.0f;
+float upperArmRotation = 45.0f;
+float upperArmRotationSpeed = 1.0f;
+
+void drawFinger(glm::vec3 basePosition);
+void drawSquare(glm::mat4 modelMatrix, glm::vec4 colour);
+static GLuint createShaderProgram(const std::string& vertexShaderSource, const std::string& fragmentShaderSource);
+static GLuint createShader(const GLenum shaderType, const std::string shaderSource);
+
+static const GLfloat vertexPositionData[] = {
+    -1.0f, -1.0f,  1.0f,  // front
+     1.0f, -1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+
 };
-const GLushort indexData[] = { 0, 1, 2,  
-                               1, 2, 3};
+static const GLushort indexData[] = {
+  0, 1, 2,   // front
+  3, 2, 1,
 
-void createGameCubw(){
+};
+
+// static const GLushort normalData[] = {
+
+// }
+
+int numVertices = 6;
+
+static void createGeometry(void) {
+    glGenBuffers(1, &vertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositionData), vertexPositionData, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &indexBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indexData), indexData, GL_STATIC_DRAW);
+
+  //   glGenBuffers(1, &normals_vbo);
+  // glBindBuffer(GL_ARRAY_BUFFER, normals_vbo);
+  // glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec3), vertexNormals, GL_STATIC_DRAW);
+}
+
+static void update(void) {
+    int milliseconds = glutGet(GLUT_ELAPSED_TIME);
+
+    // rotate the entire model, to that we can examine it
+    yRotation += yRotationSpeed;
+
+    glutPostRedisplay();
+}
+
+static void render(void) {
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  // turn on depth buffering
+  glEnable(GL_DEPTH_TEST);
+
+  // activate our shader program
+  glUseProgram(programId);
+
+  // colours
+  glm::vec4 red(0.3, 0.0, 1.0, 1.0);
+
+  glm::mat4 modelMatrix = glm::mat4(1.0f);
+ 
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 2.5f, 0.0f));
+
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(90.0f),glm::vec3(1,0,0));//rotation x = 0.0 degrees
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,1,0));//rotation y = 0.0 degrees
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,0,1));
+
+  modelMatrix = glm::scale(modelMatrix, glm::vec3(2.0f, 2.0f, 2.0f));
+  //modelMatrix = glm::translate(modelMatrix, glm::vec3(0.1, 1.0, 1.0));
+  drawSquare(modelMatrix, red);
+
+
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, -2.5f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+
+
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.25f, 0.0f, 0.0f));
+
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(1,0,0));//rotation x = 0.0 degrees
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(90.0f),glm::vec3(0,1,0));//rotation y = 0.0 degrees
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,0,1));
+
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.25f, 0.0f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+
+  
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+
+  
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+
+
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 2.5f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 2.5f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+  // TODO:  Draw the fingers (and thumb)
+  //glm::vec3 base(0.0,0.0,0.0);
+  
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 2.25f, 0.0f));
+
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(90.0f),glm::vec3(1,0,0));//rotation x = 0.0 degrees
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,1,0));//rotation y = 0.0 degrees
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,0,1));
+  
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 2.25f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 2.5f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+
+
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 2.5f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(2.5f, 0.0f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+
+
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(2.5f, 0.0f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+
+
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, -2.5f, 0.0f));
+
+  drawSquare(modelMatrix, red);
+
+
+
+  glutSwapBuffers();
+}
+
+void drawFinger(glm::vec3 basePosition) {
+  // colours
+  glm::vec4 colour1(0.8, 0.0, 0.5, 1.0);
+  glm::vec4 colour2(0.0, 0.0, 0.8, 1.0);
+  glm::vec4 colour3(0.0, 0.5, 0.5, 1.0);
+
+  // TODO:  Draw three transformed cubes to make the finger
+  
+  glm::mat4 newmodelMatrix = glm::mat4(1.0f);
+  newmodelMatrix = glm::scale(newmodelMatrix, glm::vec3(0.5f, 0.8f, 0.5f));
+  newmodelMatrix = glm::translate(newmodelMatrix, basePosition + glm::vec3(-3.8f, 0.0f, 0.0f));
+  drawSquare(newmodelMatrix, colour1);
+  
+  // glm::mat4 newmodelMatrix1 = glm::mat4(1.0f);
+  // newmodelMatrix1 = glm::scale(newmodelMatrix1, glm::vec3(0.5f, 0.8f, 0.5f));
+  // newmodelMatrix1 = glm::translate(newmodelMatrix1, basePosition + glm::vec3(-3.8f, 2.5f, 0.0f));
+  // drawSquare(newmodelMatrix1, colour2);
+
+  // glm::mat4 newmodelMatrix2 = glm::mat4(1.0f);
+  // newmodelMatrix2 = glm::scale(newmodelMatrix2, glm::vec3(0.5f, 0.8f, 0.5f));
+  // newmodelMatrix2 = glm::translate(newmodelMatrix2, basePosition + glm::vec3(-3.8f, 5.0f, 0.0f));
+  // drawSquare(newmodelMatrix2, colour3);
+  
 
 }
 
-void createGeometry(void) {
-   glGenBuffers(1, &vertexBuffer);
-   glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-   glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositionData), vertexPositionData, GL_STATIC_DRAW);
+void drawSquare(glm::mat4 modelMatrix, glm::vec4 colour) {
+  // model-view-projection matrix
+  glm::mat4 mvp = projectionMatrix * viewMatrix * modelMatrix;
+  GLuint mvpMatrixId = glGetUniformLocation(programId, "u_MVP");
+  glUniformMatrix4fv(mvpMatrixId, 1, GL_FALSE, &mvp[0][0]);
 
-   glGenBuffers(1, &indexBuffer);
-   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indexData), indexData, GL_STATIC_DRAW);
+  // cube colour
+  GLuint colourId = glGetUniformLocation(programId, "u_colour");
+  glUniform4fv(colourId, 1, (GLfloat*)&colour[0]);
+	
+  // 	// find the names (ids) of each vertex attribute
+	// GLint positionAttribId = glGetAttribLocation(programId, "position");
+	// GLint textureCoordsAttribId = glGetAttribLocation(programId, "textureCoords");
+	// GLint normalAttribId = glGetAttribLocation(programId, "normal");
+
+  // // the position of our light
+	// GLuint lightPosId = glGetUniformLocation(programId, "u_LightPos");
+	// glUniform3f(lightPosId, 1, 8 + lightOffsetY, -2);
+
+	// // the colour of our object
+	// GLuint diffuseColourId = glGetUniformLocation(programId, "u_DiffuseColour");
+	// glUniform4f(diffuseColourId, d_Colour.x, d_Colour.y, d_Colour.z, 1.0);
+
+	// // provide the vertex positions to the shaders
+	// glBindBuffer(GL_ARRAY_BUFFER, positions_vbo);
+	// glEnableVertexAttribArray(positionAttribId);
+	// glVertexAttribPointer(positionAttribId, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	// // provide the vertex texture coordinates to the shaders
+	// glBindBuffer(GL_ARRAY_BUFFER, textureCoords_vbo);
+	// glEnableVertexAttribArray(textureCoordsAttribId);
+	// glVertexAttribPointer(textureCoordsAttribId, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	// // provide the vertex normals to the shaders
+	// glBindBuffer(GL_ARRAY_BUFFER, normals_vbo);
+	// glEnableVertexAttribArray(normalAttribId);
+	// glVertexAttribPointer(normalAttribId, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+  // enable the vertex buffer
+  glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+
+  // configure the attribute array (the layout of the vertex buffer)
+  glVertexAttribPointer(positionBufferId, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 3, (void *)0);
+  glEnableVertexAttribArray(positionBufferId);
+
+  // draw the triangle strip
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+  glDrawElements(GL_TRIANGLES, numVertices, GL_UNSIGNED_SHORT, (void*)0);
+
+  // disable the attribute array
+  glDisableVertexAttribArray(positionBufferId);
 }
 
-void update(void) {
-   int milliseconds = (int)(glfwGetTime() * 1000);
+static void reshape(int width, int height) {
+    float aspectRatio = (float)width / (float)height;
+    projectionMatrix = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 1000.0f);
 
-   // TODO: Some update
-
+    // if using perpsective projection, update projection matrix
+    glViewport(0, 0, width, height);
 }
 
-void drawsquare(glm::) {
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-   // activate our shader program
-	glUseProgram(programId);
-
-   // turn on depth buffering
-   glEnable(GL_DEPTH_TEST);
-
-   // view matrix - orient everything around our preferred view
-   glm::mat4 view = glm::lookAt(
-      eyePosition,
-      glm::vec3(0,0,0),    // where to look
-      glm::vec3(0,1,0)     // up
-   );
-
-   glm::mat4 model = glm::mat4(1.0f);
-   model = glm::mat4_cast(rotation);
-   model = glm::scale(model, glm::vec3(scaleFactor, scaleFactor, scaleFactor));
-
-   // model-view-projection matrix
-   glm::mat4 mvp = projection * view * model;
-   GLuint mvpMatrixId = glGetUniformLocation(programId, "u_MVPMatrix");
-   glUniformMatrix4fv(mvpMatrixId, 1, GL_FALSE, &mvp[0][0]);
-
-   // enable the vertex buffer
-   glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-
-   // configure the attribute array (the layout of the vertex buffer)
-   glVertexAttribPointer(positionBufferId, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 3, (void *)0);
-   glEnableVertexAttribArray(positionBufferId);
-
-   // draw the triangles
-   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*)0);
-
-   // disable the attribute array
-   glDisableVertexAttribArray(positionBufferId);
+static void drag(int x, int y) {
 }
 
-void updateProjectionMatrix(int width, int height) {
-   // projection matrix - perspective projection
-   // FOV:           45°
-   // Aspect ratio:  4:3 ratio
-   // Z range:       between 0.1 and 100.0
-   float aspectRatio = (float)width / (float)height;
-   projection = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 1000.0f);
+static void mouse(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
 
-   // projection matrix - orthographic (non-perspective) projection
-   // Note:  These are in world coordinates
-   // xMin:          -10
-   // xMax:          +10
-   // yMin:          -10
-   // yMax:          +10
-   // zMin:           0
-   // zMax:          +100
-   //glm::mat4 projection = glm::ortho(-10.0f,10.0f,-10.0f,10.0f,0.0f,100.0f);
+    }
 }
 
-void reshape(GLFWwindow *window, int w, int h) {
-   width = w;
-   height = h;
-
-   glViewport(0, 0, width, height);
-
-   updateProjectionMatrix(w, h);
-}
-
-void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods) {
-   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-      glfwSetWindowShouldClose(window, true);
-   }
-}
-
-void onError(int error, const char* description) {
-   std::cerr << "Error: " << description << std::endl;
+static void keyboard(unsigned char key, int x, int y) {
+    if (key == 'r') {
+      if (yRotationSpeed > 0.0) {
+        yRotationSpeed = 0.0;
+      } else {
+        yRotationSpeed = 0.1;
+      }
+    } else if (key == 27) {
+      glutDestroyWindow(windowId);
+      exit(0);
+    }
+    std::cout << "Key pressed: " << key << std::endl;
 }
 
 int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
+    glutInitWindowSize(800, 600);
+    windowId = glutCreateWindow("Lab 02");
+    glutIdleFunc(&update);
+    glutDisplayFunc(&render);
+    glutReshapeFunc(&reshape);
+    glutMotionFunc(&drag);
+    glutMouseFunc(&mouse);
+    glutKeyboardFunc(&keyboard);
 
-   // set a function to receive GLFW errors
-   glfwSetErrorCallback(onError);
+    glewInit();
+    if (!GLEW_VERSION_2_0) {
+        std::cerr << "OpenGL 2.0 not available" << std::endl;
+        return 1;
+    }
+    std::cout << "Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
+		std::cout << "Using OpenGL " << glGetString(GL_VERSION) << std::endl;
 
-   // initialize GLFW (windowing abstraction library)
-   if (!glfwInit()) {
-      // initialization failed
-      std::cerr << "GLFW Error:  Unable to initialize GLFW" << std::endl;
-      return -1;
-   }
+    createGeometry();
+    programId = createShaderProgram("shaders/vertex.glsl", "shaders/fragment.glsl");
 
-   // create a window and an OpenGL context
-   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-   glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
-   GLFWwindow* window = glfwCreateWindow(width, height, "CSCI 3090U Base OpenGL Project", NULL, NULL);
-   if (!window) {
-      // window or OpenGL context creation failed
-      std::cerr << "GLFW Error:  Unable to create window" << std::endl;
-      return -1;
-   }
-   glfwMakeContextCurrent(window);
+    // create the view matrix (position and orient the camera)
+    viewMatrix = glm::lookAt(
+        glm::vec3(-50,30,50), // eye/camera location
+        glm::vec3(0,-2,0),    // where to look
+        glm::vec3(0,3,0)     // up
+    );
 
-   // initialize GLEW (OpenGL extension loading library)
-   glewInit();
-   if (!GLEW_VERSION_2_0) {
-      std::cerr << "OpenGL 2.0 not available" << std::endl;
-      return 1;
-   }
-   std::cout << "GLEW Version:   " << glewGetString(GLEW_VERSION) << std::endl;
-   std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
-   std::cout << "GLSL Version:   " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
-   std::cout << "GPU Vendor:     " << glGetString(GL_VENDOR) << std::endl;
-   std::cout << "GPU Model:      " << glGetString(GL_RENDERER) << std::endl;
+    glutMainLoop();
 
-   // setup the error handling
-   GLint flags; glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-   if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
-      glEnable(GL_DEBUG_OUTPUT);
-      glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-      glDebugMessageCallback(openGlDebugCallback, nullptr);
-      glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
-   }
+    return 0;
+}
 
-   glfwSetMouseButtonCallback(window, mouse);
-   glfwSetCursorPosCallback(window, drag);
-   glfwSetKeyCallback(window, keyboard);
-   glfwSetFramebufferSizeCallback(window, reshape);
-   updateProjectionMatrix(width, height);
-   glfwSwapInterval(1);
+static GLuint createShader(const GLenum shaderType, const std::string shaderFilename) {
+  // load the shader source code
+  std::ifstream fileIn(shaderFilename.c_str());
 
-   // determine the initial camera position
-   eyePosition.x = 0.0f;
-   eyePosition.y = 0.0f;
-   eyePosition.z = cameraDistance;
+	if (!fileIn.is_open()) {
+		return -1;
+	}
 
-   createGeometry();
-   programId = createShaderProgram("shaders/vertex.glsl", "shaders/fragment.glsl");
+	std::string shaderSource;
+	std::string line;
+	while (getline(fileIn, line)) {
+		shaderSource.append(line);
+		shaderSource.append("\n");
+	}
 
-   while (!glfwWindowShouldClose(window)) {
-      // perform updates (e.g. physics)
-      update();
+	const char* sourceCode = shaderSource.c_str();
 
-      // re-draw
-      render();
+	// create a shader with the specified source code
+	GLuint shaderId = glCreateShader(shaderType);
+	glShaderSource(shaderId, 1, &sourceCode, nullptr);
 
-      glfwSwapBuffers(window);
-      glfwPollEvents();
-   }
+	// compile the shader
+	glCompileShader(shaderId);
 
-   glfwDestroyWindow(window);
-   glfwTerminate();
+	// check if there were any compilation errors
+	int result;
+	glGetShaderiv(shaderId, GL_COMPILE_STATUS, &result);
+	if (result == GL_FALSE) {
+		int errorLength;
+		glGetShaderiv(shaderId, GL_INFO_LOG_LENGTH, &errorLength);
+		char *errorMessage = new char[errorLength];
 
-   return 0;
+		glGetShaderInfoLog(shaderId, errorLength, &errorLength, errorMessage);
+		std::cout << "Shader compilation failed: " << errorMessage << std::endl;
+
+		delete[] errorMessage;
+
+		glDeleteShader(shaderId);
+
+		return 0;
+	}
+
+	return shaderId;
+}
+
+static GLuint createShaderProgram(const std::string& vertexShaderFilename, const std::string& fragmentShaderFilename) {
+	// create and compile a shader for each
+	GLuint vShaderId = createShader(GL_VERTEX_SHADER, vertexShaderFilename);
+	GLuint fShaderId = createShader(GL_FRAGMENT_SHADER, fragmentShaderFilename);
+
+	// create and link the shaders into a program
+	GLuint programId = glCreateProgram();
+	glAttachShader(programId, vShaderId);
+	glAttachShader(programId, fShaderId);
+	glLinkProgram(programId);
+	glValidateProgram(programId);
+
+	// delete the shaders
+	glDetachShader(programId, vShaderId);
+	glDetachShader(programId, fShaderId);
+	glDeleteShader(vShaderId);
+	glDeleteShader(fShaderId);
+
+	return programId;
 }

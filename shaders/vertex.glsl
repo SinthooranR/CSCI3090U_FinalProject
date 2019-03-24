@@ -2,8 +2,13 @@
 
 attribute vec3 position;
 
-uniform mat4 u_MVPMatrix;
+varying vec4 v_colour;
+
+uniform mat4 u_MVP;
+uniform vec4 u_colour;
 
 void main() {
-   gl_Position = u_MVPMatrix * vec4(position, 1.0);
+  gl_Position =  u_MVP * vec4(position, 1.0);
+
+  v_colour = u_colour;
 }
