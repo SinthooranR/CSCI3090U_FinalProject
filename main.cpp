@@ -23,7 +23,7 @@ int height = 480;
 int width = 640;
 
 glm::mat4 viewMatrix;
-glm::vec3 eyePosition(-50, 30, 50);
+glm::vec3 eyePosition(-150, 60, 150);
 glm::mat4 projectionMatrix;
 
 // Model related stuff
@@ -73,8 +73,11 @@ static void createObject(std::string objectFile) {
 
 }
 
-static void drawObject(GLuint programID, GLuint objectVbo, glm::mat4 mvp,
-                       glm::vec4 colour) {
+float light_y = 0.0f;
+bool light_up = false;
+
+static void drawObject(GLuint programID, GLuint objectVbo, glm::mat4 mvp, glm::mat4 mv,
+                       glm::vec4 colour, glm::vec4 diffuse) {
     glUseProgram(programID);
 
     GLuint gpuMvp = glGetUniformLocation(programID, "u_MVP_Array");
@@ -82,6 +85,48 @@ static void drawObject(GLuint programID, GLuint objectVbo, glm::mat4 mvp,
 
     GLuint gpuColour = glGetUniformLocation(programID, "u_Colour");
     glUniform4fv(gpuColour, 1, (GLfloat *)&colour[0]);
+
+    GLuint gpuMV = glGetUniformLocation(programID, "u_MV");
+    glUniformMatrix4fv(gpuMV, 1, GL_FALSE, &mv[0][0]);
+
+
+    // attribute vec4 position;
+    // attribute vec2 textureCoords;
+    // attribute vec3 normal;
+
+    GLint positionAttribId = glGetAttribLocation(programID, "position");
+	GLint textureCoordsAttribId = glGetAttribLocation(programID, "textureCoords");
+	GLint normalAttribId = glGetAttribLocation(programID, "normal");
+
+	// the position of our light
+	GLuint lightPosId = glGetUniformLocation(programID, "u_LightPos");
+	glUniform3f(lightPosId, 150 ,light_y , 90);
+	//gg
+
+         // the position of our camera/eye
+    GLuint eyePosId = glGetUniformLocation(programID, "u_EyePosition");
+    glUniform3f(eyePosId, eyePosition.x, eyePosition.y, eyePosition.z);
+
+	// the colour of our object
+	GLuint diffuseColourId = glGetUniformLocation(programID, "u_DiffuseColour");
+	glUniform4f(diffuseColourId, diffuse.x, diffuse.y, diffuse.z, diffuse.w);
+
+
+
+	// provide the vertex positions to the shaders
+	glBindBuffer(GL_ARRAY_BUFFER, positions_vbo);
+	glEnableVertexAttribArray(positionAttribId);
+	glVertexAttribPointer(positionAttribId, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	// provide the vertex texture coordinates to the shaders
+	glBindBuffer(GL_ARRAY_BUFFER, textureCoords_vbo);
+	glEnableVertexAttribArray(textureCoordsAttribId);
+	glVertexAttribPointer(textureCoordsAttribId, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	// provide the vertex normals to the shaders
+	glBindBuffer(GL_ARRAY_BUFFER, normals_vbo);
+	glEnableVertexAttribArray(normalAttribId);
+	glVertexAttribPointer(normalAttribId, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, objectVbo);
@@ -105,6 +150,9 @@ static void drawSqaures(GLuint programID){
 
 
     glm::vec4 red(0.3, 0.0, 1.0, 1.0);
+    glm::vec4 diffusetop(0.8, 0.4, 1.0, 1.0);
+    glm::vec4 diffuseleft(0.6, 0.0, 1.0, 1.0);
+    glm::vec4 diffuseright(0.4, 0.0, 1.0, 1.0);
 
     //drawObject(programID, vbo, projectionMatrix * viewMatrix * modelMatrix, red);
 
@@ -118,25 +166,25 @@ static void drawSqaures(GLuint programID){
   modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,1,0));//rotation y = 0.0 degrees
   modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,0,1));
 
-  modelMatrix = glm::scale(modelMatrix, glm::vec3(2.0f, 2.0f, 2.0f));
+  modelMatrix = glm::scale(modelMatrix, glm::vec3(5.0f, 5.0f, 5.0f));
   //modelMatrix = glm::translate(modelMatrix, glm::vec3(0.1, 1.0, 1.0));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffusetop);
 
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.5f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffusetop);
 
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, -2.5f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffusetop);
   
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, 0.0f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffusetop);
 
   
   modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.25f, 0.0f, 0.0f));
@@ -147,28 +195,28 @@ static void drawSqaures(GLuint programID){
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.25f, 0.0f, 0.0f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseleft);
 
   
   modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, 0.0f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseleft);
 
   
   modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, 0.0f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseleft);
 
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.5f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseleft);
 
 
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.5f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseleft);
 
   
   // TODO:  Draw the fingers (and thumb)
@@ -184,33 +232,57 @@ static void drawSqaures(GLuint programID){
   
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.25f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
 
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.5f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
 
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.5f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
   
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(2.5f, 0.0f, 0.0f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
 
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(2.5f, 0.0f, 0.0f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
 
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, -2.5f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, red);
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
+    
+
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(-0.75, 1.0f, -1.95f));
+
+  modelMatrix = glm::scale(modelMatrix, glm::vec3(1.9, 1.9, 1.9));
+
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
+
  
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, -2.0f, 0.0));
+
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(90.0f),glm::vec3(1,0,0));//rotation x = 0.0 degrees
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,1,0));//rotation y = 0.0 degrees
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,0,1));
+
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseleft);
+
+
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(1,0,0));//rotation x = 0.0 degrees
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,1,0));//rotation y = 0.0 degrees
+  modelMatrix = glm::rotate(modelMatrix,glm::radians(90.0f),glm::vec3(0,0,1));
+
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffusetop);
+
+
 }
 
 static void render(GLFWwindow *window, GLuint programID) {
@@ -223,6 +295,20 @@ static void render(GLFWwindow *window, GLuint programID) {
 
     // Calculate the model matrix (transformations for the model)
     
+    if(light_up){
+        light_y += 0.01;
+    } else {
+        light_y -= 0.01;
+    }
+
+    if(light_y > 35){
+        light_up = false;
+    } else if (light_y < -35) {
+        light_up = true;
+    }
+
+
+
     drawSqaures(programID);
 
 
@@ -235,14 +321,6 @@ static GLFWwindow *init_opengl() {
 
     // Init GLFW
     if (!glfwInit()) exit(EXIT_FAILURE);
-
-    #ifdef __APPLE__
-        // We need to explicitly ask for a 3.2 context on MacOS
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    #endif
 
     // Create the window
     window = glfwCreateWindow(width, height, "IDK PAM STUFF", NULL, NULL);
