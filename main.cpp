@@ -8,6 +8,9 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -18,6 +21,8 @@
 #include "objectModel.cpp"
 
 using namespace glm;
+
+GLuint textureId;
 
 int height = 480;
 int width = 640;
@@ -37,6 +42,53 @@ GLfloat vertices[] = {-1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f,
                       -1.0f, 1.0f,  1.0f, 1.0f, 1.0f,  1.0f,
                       -1.0f, 1.0f,  1.0f, 1.0f, -1.0f, 1.0f};
 
+static void loadTexture(char const * path){
+    int imageWidth, imageHeight;
+   int numComponents;
+
+   // load the image data into a bitmap
+   unsigned char *bitmap = stbi_load(path,
+                                     &imageWidth,
+                                     &imageHeight,
+                                     &numComponents, 4);
+
+   // generate a texture name
+   glGenTextures(1, &textureId);
+
+   // make the texture active
+   glBindTexture(GL_TEXTURE_2D, textureId);
+
+   // make a texture mip map
+   glGenerateTextureMipmap(textureId);
+   glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+
+   // specify the functions to use when shrinking/enlarging the texture image
+   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+
+   // specify the tiling parameters
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+   // send the data to OpenGL
+   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imageWidth, imageHeight,
+                0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
+
+   // bind the texture to unit 0
+   glBindTexture(GL_TEXTURE_2D, textureId);
+   glActiveTexture(GL_TEXTURE0);
+
+   // free the bitmap data
+   stbi_image_free(bitmap);
+}
+
+
 static void createObject(std::string objectFile) {
 
 
@@ -44,9 +96,7 @@ static void createObject(std::string objectFile) {
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
     
-    objectModel objload(objectFile);
-
-    
+    objectModel objload(objectFile); 
 
     // VERTEX BUFFER OBJECTS (vbo)
     glGenBuffers(1, &positions_vbo);  // Create a buffer
@@ -110,8 +160,15 @@ static void drawObject(GLuint programID, GLuint objectVbo, glm::mat4 mvp, glm::m
 	// the colour of our object
 	GLuint diffuseColourId = glGetUniformLocation(programID, "u_DiffuseColour");
 	glUniform4f(diffuseColourId, diffuse.x, diffuse.y, diffuse.z, diffuse.w);
+	
+	
+	   // the shininess of the object's surface
+   GLuint shininessId = glGetUniformLocation(programID, "u_Shininess");
+   glUniform1f(shininessId, 25);
 
-
+    //Colour of Light
+    GLuint ambientColourId = glGetUniformLocation(programID, "u_AmbientColour");
+   glUniform4f(ambientColourId, colour.x, colour.y, colour.z, colour.w);
 
 	// provide the vertex positions to the shaders
 	glBindBuffer(GL_ARRAY_BUFFER, positions_vbo);
@@ -293,6 +350,11 @@ static void render(GLFWwindow *window, GLuint programID) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+//    GLuint textureUniformId = glGetUniformLocation(programID, "textureSampler");
+   glActiveTexture(GL_TEXTURE0);
+   glBindTexture(GL_TEXTURE_2D, textureId);
+   //glUniform1i(textureUniformId, 0);
+
     // Calculate the model matrix (transformations for the model)
     
     if(light_up){
@@ -308,7 +370,7 @@ static void render(GLFWwindow *window, GLuint programID) {
     }
 
 
-
+    
     drawSqaures(programID);
 
 
@@ -323,7 +385,7 @@ static GLFWwindow *init_opengl() {
     if (!glfwInit()) exit(EXIT_FAILURE);
 
     // Create the window
-    window = glfwCreateWindow(width, height, "IDK PAM STUFF", NULL, NULL);
+    window = glfwCreateWindow(width, height, "IDK SINTHOO STUFF", NULL, NULL);
     if (!window) {
         glfwTerminate();
         exit(EXIT_FAILURE);
@@ -341,9 +403,12 @@ int main(void) {
 
     // Create/Load the objects
     createObject("plane.obj");
+    loadTexture("test.png");
+
 
     // Load the shaders
     GLuint programID = createShaderProgram("vertex.glsl", "fragment.glsl");
+
 
     // Calculate the projection
     projectionMatrix = glm::perspective(glm::radians(45.0f),
@@ -355,6 +420,7 @@ int main(void) {
 
     while (!glfwWindowShouldClose(window)) {
         // Render the scene
+
         render(window, programID);
 
         // Display the image
