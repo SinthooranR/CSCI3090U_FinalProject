@@ -26,6 +26,7 @@ GLuint textureId;
 
 int height = 480;
 int width = 640;
+bool swapper = false;
 
 glm::mat4 viewMatrix;
 glm::vec3 eyePosition(-150, 60, 150);
@@ -166,9 +167,12 @@ static void drawObject(GLuint programID, GLuint objectVbo, glm::mat4 mvp, glm::m
    GLuint shininessId = glGetUniformLocation(programID, "u_Shininess");
    glUniform1f(shininessId, 25);
 
-    //Colour of Light
-    GLuint ambientColourId = glGetUniformLocation(programID, "u_AmbientColour");
-   glUniform4f(ambientColourId, colour.x, colour.y, colour.z, colour.w);
+//     //Colour of Light
+//     GLuint ambientColourId = glGetUniformLocation(programID, "u_AmbientColour");
+//    glUniform4f(ambientColourId, colour.x, colour.y, colour.z, colour.w);
+
+   GLuint swapLightandTexture = glGetUniformLocation(programID, "u_ShaderTextureSwap");
+    glUniform1f(swapLightandTexture, swapper);
 
 	// provide the vertex positions to the shaders
 	glBindBuffer(GL_ARRAY_BUFFER, positions_vbo);
@@ -191,6 +195,21 @@ static void drawObject(GLuint programID, GLuint objectVbo, glm::mat4 mvp, glm::m
     glDrawArrays(GL_TRIANGLES, 0, sizeof(vertices) / sizeof(vertices[0]));
     glDisableVertexAttribArray(0);
 }
+
+void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods) {
+   if (key == GLFW_KEY_S && action == GLFW_PRESS) {
+        if(swapper == true) {
+            swapper = false;
+        } 
+        else {
+            swapper = true;
+        }
+    }
+    else if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS){
+        glfwSetWindowShouldClose(window, true);
+    }
+}
+
 
 static void drawSqaures(GLuint programID){
 
@@ -400,6 +419,7 @@ static GLFWwindow *init_opengl() {
 int main(void) {
     // Init the scene
     GLFWwindow *window = init_opengl();
+    glfwSetKeyCallback(window, keyboard);
 
     // Create/Load the objects
     createObject("plane.obj");
