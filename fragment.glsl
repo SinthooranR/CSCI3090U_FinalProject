@@ -35,9 +35,9 @@ void main(){
   outColor = vec4(texture(textureSampler, text_coords).rgb, 1.0);
   }
   else{
-  //outColor = u_DiffuseColour * diffuse + ambientColour;;
+  outColor = u_DiffuseColour * diffuse + ambientColour;;
 
   //Shininess Attempt
-  outColor = vec4(1.0, 1.0, 1.0, 1.0) * specularCoefficient * + u_DiffuseColour * diffuse + ambientColour;
+  //outColor = vec4(1.0, 1.0, 1.0, 1.0) * specularCoefficient * + u_DiffuseColour * diffuse;
   }
 }

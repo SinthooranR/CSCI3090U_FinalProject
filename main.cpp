@@ -27,10 +27,26 @@ GLuint textureId;
 int height = 480;
 int width = 640;
 bool swapper = false;
+int rot = 10;
+bool rotation = false;
 
+glm::mat4 modelMatrix;
+glm::mat4 modelMatrix2;
 glm::mat4 viewMatrix;
-glm::vec3 eyePosition(-150, 60, 150);
+glm::mat4 viewMatrix2;
+
+glm::vec3 eyePosition(-150, 75, 150);
 glm::mat4 projectionMatrix;
+
+float yoffset = 1.0f;
+float xoffset = 0.0f;
+float zoffset = 0.0f;
+
+float xrot = 0.0f;
+float yrot = 0.0f;
+float zrot = 0.0f;
+
+
 
 // Model related stuff
 GLint vertex_attribute;
@@ -127,6 +143,9 @@ static void createObject(std::string objectFile) {
 float light_y = 0.0f;
 bool light_up = false;
 
+bool animation = false;
+bool updated = false;
+
 static void drawObject(GLuint programID, GLuint objectVbo, glm::mat4 mvp, glm::mat4 mv,
                        glm::vec4 colour, glm::vec4 diffuse) {
     glUseProgram(programID);
@@ -208,14 +227,29 @@ void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods) {
     else if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS){
         glfwSetWindowShouldClose(window, true);
     }
+	else if (key == GLFW_KEY_R && action == GLFW_PRESS) {
+	   if (rotation) {
+		   rotation = false;
+	   }
+	   else {
+		   rotation = true;
+	   }
+	  
+    }
+	else if (key = GLFW_KEY_A && action == GLFW_PRESS) {
+	   xoffset = 7.0f;
+	   animation = true;
+    }
 }
+
 
 
 static void drawSqaures(GLuint programID){
 
-    glm::mat4 modelMatrix = glm::mat4(1.0f);
-
-    //     glm::rotate(modelMatrix, glm::radians(0.0f), glm::vec3(1, 0, 0));
+    modelMatrix = glm::mat4(1.0f);
+	
+	
+	//     glm::rotate(model1Matrix, glm::radians(0.0f), glm::vec3(1, 0, 0));
     // modelMatrix =
     //     glm::rotate(modelMatrix, glm::radians(0.0f), glm::vec3(0, 1, 0));
     // modelMatrix =
@@ -335,29 +369,40 @@ static void drawSqaures(GLuint programID){
 
   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
     
+  modelMatrix2 = modelMatrix;
+  viewMatrix2 = viewMatrix;
 
-  modelMatrix = glm::translate(modelMatrix, glm::vec3(-0.75, 1.0f, -1.95f));
-
-  modelMatrix = glm::scale(modelMatrix, glm::vec3(1.9, 1.9, 1.9));
-
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
-
- 
-  modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, -2.0f, 0.0));
-
-  modelMatrix = glm::rotate(modelMatrix,glm::radians(90.0f),glm::vec3(1,0,0));//rotation x = 0.0 degrees
-  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,1,0));//rotation y = 0.0 degrees
-  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,0,1));
-
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseleft);
+  
+  
 
 
-  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(1,0,0));//rotation x = 0.0 degrees
-  modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,1,0));//rotation y = 0.0 degrees
-  modelMatrix = glm::rotate(modelMatrix,glm::radians(90.0f),glm::vec3(0,0,1));
+  modelMatrix2 = glm::translate(modelMatrix2, glm::vec3(-0.75 + xoffset, 1.0f , -1.95f + zoffset));
+  modelMatrix2 = glm::rotate(modelMatrix2, glm::radians(0.0f+xrot), glm::vec3(1, 0, 0));//rotation x = 0.0 degrees
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffusetop);
+  modelMatrix2 = glm::scale(modelMatrix2, glm::vec3(1.9, 1.9, 1.9));
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, red, diffuseright);
 
+
+
+
+  modelMatrix2 = glm::translate(modelMatrix2, glm::vec3(0.0f, -2.0f, 0.0));
+  modelMatrix2 = glm::rotate(modelMatrix2, glm::radians(90.0f), glm::vec3(1, 0, 0));//rotation x = 0.0 degrees
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, red, diffusetop);
+
+	
+
+
+  modelMatrix2 = glm::rotate(modelMatrix2, glm::radians(-90.0f), glm::vec3(1, 0, 0));//rotation x = 0.0 degrees
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, red, diffuseleft);
+
+  modelMatrix2 = glm::rotate(modelMatrix2, glm::radians(-90.0f), glm::vec3(1, 0, 0));//rotation x = 0.0 degrees
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, red, diffusetop);
+
+  modelMatrix2 = glm::rotate(modelMatrix2,glm::radians(90.0f),glm::vec3(0,0,1));
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, red, diffusetop);
+
+  modelMatrix2 = glm::rotate(modelMatrix2, glm::radians(-90.0f), glm::vec3(0, 0, 1));
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, red, diffusetop);
 
 }
 
@@ -387,6 +432,22 @@ static void render(GLFWwindow *window, GLuint programID) {
     } else if (light_y < -35) {
         light_up = true;
     }
+
+	
+	if (rotation) {
+		viewMatrix = glm::rotate(viewMatrix, glm::radians(0.1f), glm::vec3(0, 1, 0));
+	}
+
+
+
+	//yoffset+= 0.009f;
+	if (xoffset > 0.0f) {
+		xoffset -= 0.001f;
+		xrot += 0.103f;
+	}
+	
+	
+	
 
 
     
