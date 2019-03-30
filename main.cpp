@@ -16,37 +16,34 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
-
 #include "shader.hpp"
 #include "objectModel.cpp"
 
 using namespace glm;
 
-GLuint textureId;
+GLuint textureId[2];
 
 int height = 480;
 int width = 640;
 bool swapper = false;
 int rot = 10;
 bool rotation = false;
+bool swapTextures = true;
+int indexData = 0;
 
 glm::mat4 modelMatrix;
 glm::mat4 modelMatrix2;
 glm::mat4 viewMatrix;
 glm::mat4 viewMatrix2;
-
 glm::vec3 eyePosition(-150, 85, 150);
 glm::mat4 projectionMatrix;
 
 float yoffset = 1.0f;
 float xoffset = 0.0f;
 float zoffset = 0.0f;
-
 float xrot = 0.0f;
 float yrot = 0.0f;
 float zrot = 0.0f;
-
-
 
 // Model related stuff
 GLint vertex_attribute;
@@ -59,90 +56,77 @@ GLfloat vertices[] = {-1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f,
                       -1.0f, 1.0f,  1.0f, 1.0f, 1.0f,  1.0f,
                       -1.0f, 1.0f,  1.0f, 1.0f, -1.0f, 1.0f};
 
-static void loadTexture(char const * path){
-    int imageWidth, imageHeight;
-   int numComponents;
+/***************************************************************************************
+*    Title: loadTexture()
+*    Author: Joey DeVries
+*    Date: March 29 2019
+*    Availability: https://github.com/JoeyDeVries/LearnOpenGL
+*
+***************************************************************************************/
+unsigned int loadTexture(char const * path){
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
 
-   // load the image data into a bitmap
-   unsigned char *bitmap = stbi_load(path,
-                                     &imageWidth,
-                                     &imageHeight,
-                                     &numComponents, 4);
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
 
-   // generate a texture name
-   glGenTextures(1, &textureId);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
 
-   // make the texture active
-   glBindTexture(GL_TEXTURE_2D, textureId);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-   // make a texture mip map
-   glGenerateTextureMipmap(textureId);
-   glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
-
-   // specify the functions to use when shrinking/enlarging the texture image
-   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-
-   // specify the tiling parameters
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-   // send the data to OpenGL
-   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imageWidth, imageHeight,
-                0, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
-
-   // bind the texture to unit 0
-   glBindTexture(GL_TEXTURE_2D, textureId);
-   glActiveTexture(GL_TEXTURE0);
-
-   // free the bitmap data
-   stbi_image_free(bitmap);
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
+    return textureID;
 }
 
-
 static void createObject(std::string objectFile) {
-
 
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
-    
     objectModel objload(objectFile); 
 
     // VERTEX BUFFER OBJECTS (vbo)
-    glGenBuffers(1, &positions_vbo);  // Create a buffer
+    glGenBuffers(1, &positions_vbo);  
     // Send the buffer to the GPU and make it active
     glBindBuffer(GL_ARRAY_BUFFER, positions_vbo);
     // Upload the data to the buffer
     glBufferData(GL_ARRAY_BUFFER, objload.vertices.size() * sizeof(vec3), &objload.vertices[0], GL_STATIC_DRAW);
-
-
-        // VERTEX BUFFER OBJECTS (vbo)
-    glGenBuffers(1, &textureCoords_vbo);  // Create a buffer
+    // VERTEX BUFFER OBJECTS (vbo)
+    glGenBuffers(1, &textureCoords_vbo);  
     // Send the buffer to the GPU and make it active
     glBindBuffer(GL_ARRAY_BUFFER, textureCoords_vbo);
     // Upload the data to the buffer
     glBufferData(GL_ARRAY_BUFFER, objload.uvs.size() * sizeof(vec3), &objload.uvs[0] , GL_STATIC_DRAW);
-
-        // VERTEX BUFFER OBJECTS (vbo)
-    glGenBuffers(1, &normals_vbo);  // Create a buffer
+    // VERTEX BUFFER OBJECTS (vbo)
+    glGenBuffers(1, &normals_vbo);  
     // Send the buffer to the GPU and make it active
     glBindBuffer(GL_ARRAY_BUFFER, normals_vbo);
     // Upload the data to the buffer
     glBufferData(GL_ARRAY_BUFFER, objload.normals.size() * sizeof(vec3), &objload.normals[0], GL_STATIC_DRAW);
-
-
 }
 
 float light_y = 0.0f;
 bool light_up = false;
-
 bool animation = false;
 bool updated = false;
 
@@ -159,11 +143,6 @@ static void drawObject(GLuint programID, GLuint objectVbo, glm::mat4 mvp, glm::m
     GLuint gpuMV = glGetUniformLocation(programID, "u_MV");
     glUniformMatrix4fv(gpuMV, 1, GL_FALSE, &mv[0][0]);
 
-
-    // attribute vec4 position;
-    // attribute vec2 textureCoords;
-    // attribute vec3 normal;
-
     GLint positionAttribId = glGetAttribLocation(programID, "position");
 	GLint textureCoordsAttribId = glGetAttribLocation(programID, "textureCoords");
 	GLint normalAttribId = glGetAttribLocation(programID, "normal");
@@ -171,9 +150,8 @@ static void drawObject(GLuint programID, GLuint objectVbo, glm::mat4 mvp, glm::m
 	// the position of our light
 	GLuint lightPosId = glGetUniformLocation(programID, "u_LightPos");
 	glUniform3f(lightPosId, 150 ,light_y , 90);
-	//gg
 
-         // the position of our camera/eye
+    // the position of our camera/eye
     GLuint eyePosId = glGetUniformLocation(programID, "u_EyePosition");
     glUniform3f(eyePosId, eyePosition.x, eyePosition.y, eyePosition.z);
 
@@ -181,16 +159,7 @@ static void drawObject(GLuint programID, GLuint objectVbo, glm::mat4 mvp, glm::m
 	GLuint diffuseColourId = glGetUniformLocation(programID, "u_DiffuseColour");
 	glUniform4f(diffuseColourId, diffuse.x, diffuse.y, diffuse.z, diffuse.w);
 	
-	
-	   // the shininess of the object's surface
-   GLuint shininessId = glGetUniformLocation(programID, "u_Shininess");
-   glUniform1f(shininessId, 25);
-
-//     //Colour of Light
-//     GLuint ambientColourId = glGetUniformLocation(programID, "u_AmbientColour");
-//    glUniform4f(ambientColourId, colour.x, colour.y, colour.z, colour.w);
-
-   GLuint swapLightandTexture = glGetUniformLocation(programID, "u_ShaderTextureSwap");
+    GLuint swapLightandTexture = glGetUniformLocation(programID, "u_ShaderTextureSwap");
     glUniform1f(swapLightandTexture, swapper);
 
 	// provide the vertex positions to the shaders
@@ -224,6 +193,17 @@ void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods) {
             swapper = true;
         }
     }
+
+    else if(key == GLFW_KEY_UP && action == GLFW_PRESS){
+        if(swapTextures == true){
+            if(indexData > 1){
+            indexData = 0;
+            }
+            else{
+                indexData++;
+            }
+        }
+    }
     else if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS){
         glfwSetWindowShouldClose(window, true);
     }
@@ -238,39 +218,21 @@ void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods) {
     }
 	else if (key = GLFW_KEY_A && action == GLFW_PRESS) {
 	   xoffset = 7.0f;
-	   xrot = 0.0f;
 	   animation = true;
-   }
+    }
 
+   else{
+    }
 }
-
-
 
 static void drawSqaures(GLuint programID){
 
     modelMatrix = glm::mat4(1.0f);
 	
-	
-	//     glm::rotate(model1Matrix, glm::radians(0.0f), glm::vec3(1, 0, 0));
-    // modelMatrix =
-    //     glm::rotate(modelMatrix, glm::radians(0.0f), glm::vec3(0, 1, 0));
-    // modelMatrix =
-    //     glm::rotate(modelMatrix, glm::radians(0.0f), glm::vec3(0, 0, 1));
-    // modelMatrix = glm::scale(modelMatrix, glm::vec3(1.0, 1.0, 1.0));
-
-    // Render the objects
-
-
-    glm::vec4 red(0.3, 0.0, 1.0, 1.0);
+    glm::vec4 cube_colour(0.3, 0.0, 1.0, 1.0);
     glm::vec4 diffusetop(0.8, 0.4, 1.0, 1.0);
     glm::vec4 diffuseleft(0.6, 0.0, 1.0, 1.0);
     glm::vec4 diffuseright(0.4, 0.0, 1.0, 1.0);
-
-    //drawObject(programID, vbo, projectionMatrix * viewMatrix * modelMatrix, red);
-
-
-
-  //glm::mat4 modelMatrix = glm::mat4(1.0f);
  
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 2.5f, 0.0f));
 
@@ -279,26 +241,17 @@ static void drawSqaures(GLuint programID){
   modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,0,1));
 
   modelMatrix = glm::scale(modelMatrix, glm::vec3(5.0f, 5.0f, 5.0f));
-  //modelMatrix = glm::translate(modelMatrix, glm::vec3(0.1, 1.0, 1.0));
-
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffusetop);
-
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffusetop);
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.5f));
-
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffusetop);
-
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffusetop);
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, -2.5f));
-
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffusetop);
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffusetop);
   
-
   modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, 0.0f));
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffusetop);
 
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffusetop);
-
-  
   modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.25f, 0.0f, 0.0f));
 
   modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(1,0,0));//rotation x = 0.0 degrees
@@ -306,35 +259,19 @@ static void drawSqaures(GLuint programID){
   modelMatrix = glm::rotate(modelMatrix,glm::radians(90.0f),glm::vec3(0,0,1));
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.25f, 0.0f, 0.0f));
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffuseleft);
 
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseleft);
-
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, 0.0f));
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffuseleft);
   
   modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, 0.0f));
-
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseleft);
-
-  
-  modelMatrix = glm::translate(modelMatrix, glm::vec3(-2.5f, 0.0f, 0.0f));
-
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseleft);
-
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffuseleft);
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.5f));
-
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseleft);
-
-
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffuseleft);
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.5f));
-
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseleft);
-
-  
-  // TODO:  Draw the fingers (and thumb)
-  //glm::vec3 base(0.0,0.0,0.0);
-  
-
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffuseleft);
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.25f));
 
@@ -343,68 +280,48 @@ static void drawSqaures(GLuint programID){
   modelMatrix = glm::rotate(modelMatrix,glm::radians(0.0f),glm::vec3(0,0,1));
   
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.25f));
-
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
-
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffuseright);
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.5f));
-
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
-
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffuseright);
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 2.5f));
-
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffuseright);
   
+  modelMatrix = glm::translate(modelMatrix, glm::vec3(2.5f, 0.0f, 0.0f));
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffuseright);
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(2.5f, 0.0f, 0.0f));
-
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
-
-
-  modelMatrix = glm::translate(modelMatrix, glm::vec3(2.5f, 0.0f, 0.0f));
-
-   drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
-
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffuseright);
 
   modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, -2.5f));
 
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, red, diffuseright);
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix * modelMatrix, projectionMatrix * viewMatrix, cube_colour, diffuseright);
     
   modelMatrix2 = modelMatrix;
   viewMatrix2 = viewMatrix;
-
-  
-  
-
 
   modelMatrix2 = glm::translate(modelMatrix2, glm::vec3(-0.75 + xoffset, 1.0f , -1.95f + zoffset));
   modelMatrix2 = glm::rotate(modelMatrix2, glm::radians(0.0f+xrot), glm::vec3(1, 0, 0));//rotation x = 0.0 degrees
 
   modelMatrix2 = glm::scale(modelMatrix2, glm::vec3(1.9, 1.9, 1.9));
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, red, diffuseright);
-
-
-
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, cube_colour, diffuseright);
 
   modelMatrix2 = glm::translate(modelMatrix2, glm::vec3(0.0f, -2.0f, 0.0));
   modelMatrix2 = glm::rotate(modelMatrix2, glm::radians(90.0f), glm::vec3(1, 0, 0));//rotation x = 0.0 degrees
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, red, diffusetop);
-
-	
-
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, cube_colour, diffusetop);
 
   modelMatrix2 = glm::rotate(modelMatrix2, glm::radians(-90.0f), glm::vec3(1, 0, 0));//rotation x = 0.0 degrees
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, red, diffuseleft);
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, cube_colour, diffuseleft);
 
   modelMatrix2 = glm::rotate(modelMatrix2, glm::radians(-90.0f), glm::vec3(1, 0, 0));//rotation x = 0.0 degrees
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, red, diffusetop);
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, cube_colour, diffusetop);
 
   modelMatrix2 = glm::rotate(modelMatrix2,glm::radians(90.0f),glm::vec3(0,0,1));
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, red, diffusetop);
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, cube_colour, diffusetop);
 
   modelMatrix2 = glm::rotate(modelMatrix2, glm::radians(-90.0f), glm::vec3(0, 0, 1));
-  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, red, diffusetop);
+  drawObject(programID, positions_vbo, projectionMatrix * viewMatrix2 * modelMatrix2, projectionMatrix * viewMatrix2, cube_colour, diffusetop);
 
 }
 
@@ -416,9 +333,9 @@ static void render(GLFWwindow *window, GLuint programID) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-//    GLuint textureUniformId = glGetUniformLocation(programID, "textureSampler");
+   //GLuint textureUniformId = glGetUniformLocation(programID, "textureSampler");
    glActiveTexture(GL_TEXTURE0);
-   glBindTexture(GL_TEXTURE_2D, textureId);
+   glBindTexture(GL_TEXTURE_2D, textureId[indexData]);
    //glUniform1i(textureUniformId, 0);
 
     // Calculate the model matrix (transformations for the model)
@@ -440,8 +357,6 @@ static void render(GLFWwindow *window, GLuint programID) {
 		viewMatrix = glm::rotate(viewMatrix, glm::radians(0.1f), glm::vec3(0, 1, 0));
 	}
 
-
-
 	//yoffset+= 0.009f;
 	if (xoffset > 0.0f) {
 		xoffset -= 0.001f;
@@ -453,17 +368,8 @@ static void render(GLFWwindow *window, GLuint programID) {
 	else if (xoffset > 0.0f && xoffset < 0.2f) {
 		viewMatrix = glm::translate(viewMatrix, glm::vec3(0.0f, -0.1f, 0.0f));
 	}
-	
-	
-	
-	
 
-
-    
     drawSqaures(programID);
-
-
-
 }
 
 static GLFWwindow *init_opengl() {
@@ -472,7 +378,6 @@ static GLFWwindow *init_opengl() {
 
     // Init GLFW
     if (!glfwInit()) exit(EXIT_FAILURE);
-
     // Create the window
     window = glfwCreateWindow(width, height, "IDK SINTHOO STUFF", NULL, NULL);
     if (!window) {
@@ -487,14 +392,29 @@ static GLFWwindow *init_opengl() {
 }
 
 int main(void) {
+    cout << "Buttons to Use: " << endl;
+    cout << endl;
+    cout << "Press 'S' to Swap between the lighting and Textures" << endl;
+    cout << endl;
+    cout << "When in Textures Mode, Press the 'Up Arrow Key' to switch between Textures" << endl;
+    cout << endl;
+    cout << "Press 'R' to Rotate the Entire Object" << endl;
+    cout << endl;
+    cout << "Press 'A' to animate the Cube" << endl;
+    cout << endl;
+    cout << "Press 'Escape' to Exit the OpenGL Program" << endl;
+    cout << endl;
+
     // Init the scene
     GLFWwindow *window = init_opengl();
     glfwSetKeyCallback(window, keyboard);
 
     // Create/Load the objects
     createObject("plane.obj");
-    loadTexture("test.png");
+    //loadTexture("test.png");
 
+    textureId[0] = loadTexture("test.png");
+    textureId[1] = loadTexture("images.jpg");
 
     // Load the shaders
     GLuint programID = createShaderProgram("vertex.glsl", "fragment.glsl");
