@@ -238,6 +238,7 @@ void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods) {
     }
 	else if (key = GLFW_KEY_A && action == GLFW_PRESS) {
 	   xoffset = 7.0f;
+	   xrot = 0.0f;
 	   animation = true;
     }
 }
@@ -443,8 +444,15 @@ static void render(GLFWwindow *window, GLuint programID) {
 	//yoffset+= 0.009f;
 	if (xoffset > 0.0f) {
 		xoffset -= 0.001f;
-		xrot += 0.103f;
+		xrot += 0.10295f;
 	}
+	if (xoffset  < 0.45f && xoffset > 0.2f) {
+		viewMatrix = glm::translate(viewMatrix, glm::vec3(0.0f, 0.1f, 0.0f));
+	}
+	else if (xoffset > 0.0f && xoffset < 0.2f) {
+		viewMatrix = glm::translate(viewMatrix, glm::vec3(0.0f, -0.1f, 0.0f));
+	}
+	
 	
 	
 	
