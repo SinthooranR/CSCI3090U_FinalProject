@@ -35,7 +35,7 @@ glm::mat4 modelMatrix2;
 glm::mat4 viewMatrix;
 glm::mat4 viewMatrix2;
 
-glm::vec3 eyePosition(-150, 75, 150);
+glm::vec3 eyePosition(-150, 85, 150);
 glm::mat4 projectionMatrix;
 
 float yoffset = 1.0f;
@@ -240,7 +240,8 @@ void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	   xoffset = 7.0f;
 	   xrot = 0.0f;
 	   animation = true;
-    }
+   }
+
 }
 
 
